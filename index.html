@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Inspection App</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Home Inspection Report</h1>
+        
+        <!-- Basic Information Section -->
+        <div class="section">
+            <h3>Basic Information</h3>
+            <div class="form-group">
+                <label for="inspection-date">Inspection Date:</label>
+                <input type="date" id="inspection-date" required>
+            </div>
+            <div class="form-group">
+                <label for="property-address">Property Address:</label>
+                <input type="text" id="property-address" required>
+            </div>
+            <div class="form-group">
+                <label for="inspector-name">Inspector Name:</label>
+                <input type="text" id="inspector-name" required>
+            </div>
+        </div>
+
+        <!-- Inspection Areas -->
+        <div class="section">
+            <h3>Inspection Areas</h3>
+            <select id="area-select" class="condition-select">
+                <option value="">Select Area</option>
+                <option value="exterior">Exterior</option>
+                <option value="interior">Interior</option>
+                <option value="roof">Roof</option>
+                <option value="plumbing">Plumbing</option>
+                <option value="electrical">Electrical</option>
+                <option value="hvac">HVAC</option>
+                <option value="foundation">Foundation</option>
+            </select>
+            
+            <div class="form-group">
+                <label for="condition">Condition:</label>
+                <select id="condition" class="condition-select">
+                    <option value="excellent">Excellent</option>
+                    <option value="good">Good</option>
+                    <option value="fair">Fair</option>
+                    <option value="poor">Poor</option>
+                    <option value="critical">Critical</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes:</label>
+                <textarea id="notes"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="photo-upload">Add Photos:</label>
+                <input type="file" id="photo-upload" accept="image/*" multiple>
+                <div id="photo-preview" class="photo-container"></div>
+            </div>
+
+            <button onclick="addInspectionItem()">Add to Report</button>
+        </div>
+
+        <!-- Issues List -->
+        <div class="section">
+            <h3>Inspection Items</h3>
+            <div id="issues-list" class="issues-list"></div>
+        </div>
+
+        <!-- Summary Section -->
+        <div id="summary-section">
+            <h3>Summary</h3>
+            <div id="summary-content"></div>
+        </div>
+
+        <button onclick="generateReport()">Generate PDF Report</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
