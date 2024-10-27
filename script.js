@@ -1,40 +1,60 @@
 let inspectionItems = [];
 
 function addInspectionItem() {
-    const area = $('#area-select').val();
-    const condition = $('#condition').val();
-    const notes = $('#notes').val();
-    const photos = $('#photo-upload')[0].files;
+    const area = document.getElementById('area-select').value;
+    const condition = document.getElementById('condition').value;
+    const notes = document.getElementById('notes').value;
+    const photoUpload = document.getElementById('photo-upload');
+    const photos = photoUpload.files;
 
     if (!area || !condition) {
-        alert('Please select an area and condition');
+        alert('Please select an area and condition.');
         return;
     }
 
-    const item = {
-        area,
-        condition,
-        notes,
-        photos: Array.from(photos),
-        timestamp: new Date().toISOString()
-    };
+    const item = { area, condition, notes, photos: [] };
 
-    inspectionItems.push(item);
-    updateIssuesList();
-    updateSummary();
-    clearForm();
+    // Convert photos to data URLs
+    const photoPromises = Array.from(photos).map(file => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    });
+
+    Promise.all(photoPromises).then(photoDataUrls => {
+        item.photos = photoDataUrls;
+        inspectionItems.push(item);
+        updateIssuesList();
+        updateSummary();
+        
+        // Clear inputs
+        document.getElementById('area-select').value = '';
+        document.getElementById('condition').value = 'excellent';
+        document.getElementById('notes').value = '';
+        document.getElementById('photo-upload').value = '';
+        document.getElementById('photo-preview').innerHTML = '';
+    });
 }
 
 function updateIssuesList() {
-    const $issuesList = $('#issues-list');
-    $issuesList.empty();
+    const issuesList = document.getElementById('issues-list');
+    issuesList.innerHTML = '';
 
     inspectionItems.forEach((item, index) => {
-        $(`<div class="issue-item">
-            <strong>${item.area}</strong> - Condition: ${item.condition}
+        const itemElement = document.createElement('div');
+        itemElement.className = 'issue-item';
+        itemElement.innerHTML = `
+            <h4>${item.area} - ${item.condition}</h4>
             <p>${item.notes}</p>
-            <button onclick="removeItem(${index})">Remove</button>
-        </div>`).appendTo($issuesList);
+            <div class="photo-container">
+                ${item.photos.map(photo => `<img src="${photo}" class="photo-preview" alt="Inspection photo">`).join('')}
+            </div>
+            <button onclick="removeInspectionItem(${index})">Remove</button>
+        `;
+        issuesList.appendChild(itemElement);
     });
 }
 
@@ -68,92 +88,99 @@ function clearForm() {
 }
 
 // Photo preview functionality
-$('#photo-upload').on('change', function(e) {
-    const $preview = $('#photo-preview');
-    $preview.empty();
+function handlePhotoUpload(event) {
+    const files = event.target.files;
+    const photoPreview = document.getElementById('photo-preview');
+    photoPreview.innerHTML = ''; // Clear existing previews
 
-    Array.from(e.target.files).forEach(file => {
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const reader = new FileReader();
+
         reader.onload = function(e) {
-            $('<img>', {
-                src: e.target.result,
-                class: 'photo-preview'
-            }).appendTo($preview);
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.className = 'photo-preview';
+            photoPreview.appendChild(img);
         }
+
         reader.readAsDataURL(file);
-    });
-});
+    }
+}
 
 function generateReport() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
+    let yOffset = 20;
+
+    // Add basic information
     doc.setFontSize(20);
-    doc.text('Home Inspection Report', 20, 20);
-    
+    doc.text('Home Inspection Report', 105, yOffset, { align: 'center' });
+    yOffset += 20;
+
     doc.setFontSize(12);
-    doc.text(`Date: ${$('#inspection-date').val()}`, 20, 40);
-    doc.text(`Address: ${$('#property-address').val()}`, 20, 50);
-    doc.text(`Inspector: ${$('#inspector-name').val()}`, 20, 60);
+    doc.text(`Inspection Date: ${document.getElementById('inspection-date').value}`, 20, yOffset);
+    yOffset += 10;
+    doc.text(`Property Address: ${document.getElementById('property-address').value}`, 20, yOffset);
+    yOffset += 10;
+    doc.text(`Inspector Name: ${document.getElementById('inspector-name').value}`, 20, yOffset);
+    yOffset += 20;
 
     // Add inspection items
-    let yPosition = 80;
-    
-    // Process each inspection item and its photos
-    inspectionItems.forEach(item => {
-        if (yPosition > 250) {
+    inspectionItems.forEach((item, index) => {
+        if (yOffset > 250) {
             doc.addPage();
-            yPosition = 20;
+            yOffset = 20;
         }
-        
+
         doc.setFontSize(14);
-        doc.text(`Area: ${item.area}`, 20, yPosition);
+        doc.text(`${index + 1}. ${item.area} - ${item.condition}`, 20, yOffset);
+        yOffset += 10;
+
         doc.setFontSize(12);
-        doc.text(`Condition: ${item.condition}`, 20, yPosition + 10);
-        doc.text(`Notes: ${item.notes}`, 20, yPosition + 20);
-        
-        // Add photos if they exist
-        if (item.photos && item.photos.length > 0) {
-            yPosition += 30;
-            
-            item.photos.forEach((photo, index) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Check if we need a new page for the image
-                    if (yPosition > 220) {
-                        doc.addPage();
-                        yPosition = 20;
-                    }
-                    
-                    // Add the image to the PDF
-                    try {
-                        doc.addImage(
-                            e.target.result,
-                            'JPEG',
-                            20,
-                            yPosition,
-                            80,  // width in mm
-                            60   // height in mm
-                        );
-                        yPosition += 70;
-                    } catch (err) {
-                        console.error('Error adding image:', err);
-                    }
-                    
-                    // Save the PDF after the last image of the last item is processed
-                    if (index === item.photos.length - 1) {
-                        doc.save('home-inspection-report.pdf');
-                    }
-                };
-                reader.readAsDataURL(photo);
+        const splitNotes = doc.splitTextToSize(item.notes, 170);
+        doc.text(splitNotes, 20, yOffset);
+        yOffset += splitNotes.length * 5 + 10;
+
+        // Add photos
+        if (item.photos.length > 0) {
+            const photoWidth = 80;
+            const photoHeight = 60;
+            let xOffset = 20;
+
+            item.photos.forEach((photo, photoIndex) => {
+                if (xOffset + photoWidth > 190) {
+                    xOffset = 20;
+                    yOffset += photoHeight + 10;
+                }
+
+                if (yOffset + photoHeight > 280) {
+                    doc.addPage();
+                    yOffset = 20;
+                }
+
+                doc.addImage(photo, 'JPEG', xOffset, yOffset, photoWidth, photoHeight);
+                xOffset += photoWidth + 10;
             });
+
+            yOffset += photoHeight + 20;
         }
-        
-        yPosition += 40;
     });
 
-    // Only save if there are no photos (otherwise it's handled in the photo processing)
-    if (!inspectionItems.some(item => item.photos && item.photos.length > 0)) {
-        doc.save('home-inspection-report.pdf');
-    }
+    // Add summary
+    doc.addPage();
+    yOffset = 20;
+    doc.setFontSize(16);
+    doc.text('Summary', 105, yOffset, { align: 'center' });
+    yOffset += 20;
+
+    doc.setFontSize(12);
+    const summaryContent = document.getElementById('summary-content').innerText;
+    const splitSummary = doc.splitTextToSize(summaryContent, 170);
+    doc.text(splitSummary, 20, yOffset);
+
+    doc.save('home_inspection_report.pdf');
 }
+
+// Add event listener for photo upload
+document.getElementById('photo-upload').addEventListener('change', handlePhotoUpload);
